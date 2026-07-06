@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "muscles-data-qdrant"
+version = "0.1.0"
+description = "Qdrant VectorSearchPort adapter for muscles-data"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Denis B.", email = "denis@butko.info" }]
+dependencies = [
+  "muscles-data>=0.1.0",
+  "qdrant-client>=1.10",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
