@@ -10,10 +10,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: butkoden/muscles-data
+          path: muscles-data
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip build
+      - run: python -m pip install -e ./muscles-data --no-deps
       - run: python -m pip install -e ".[dev]"
       - run: python -m pytest -q
       - run: python -m build
