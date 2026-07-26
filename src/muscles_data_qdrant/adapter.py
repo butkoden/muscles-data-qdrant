@@ -7,7 +7,14 @@ from dataclasses import asdict
 from typing import Any, Mapping
 
 from muscles_data.config import DataResourceConfig
-from muscles_data.errors import DataError
+from muscles_data.errors import (
+    DataConfigurationError,
+    DataConnectionError,
+    DataError,
+    DataSchemaMismatchError,
+    DataUnsupportedOperationError,
+    DataVectorDimensionError,
+)
 from muscles_data.models import DataCapability, HealthResult, InspectResult, VectorHit, WriteResult
 
 
@@ -20,19 +27,23 @@ class QdrantAdapterError(DataError):
     """Base error for Qdrant vector adapter failures."""
 
 
-class QdrantClientMissingError(QdrantAdapterError):
+class QdrantConfigError(DataConfigurationError, QdrantAdapterError):
+    """Raised when Qdrant resource configuration is incomplete or invalid."""
+
+
+class QdrantClientMissingError(DataConfigurationError, QdrantAdapterError):
     """Raised when Qdrant adapter is used without an available client."""
 
 
-class QdrantConnectionError(QdrantAdapterError):
+class QdrantConnectionError(DataConnectionError, QdrantAdapterError):
     """Raised when Qdrant operation cannot reach or use the backend."""
 
 
-class QdrantFilterError(QdrantAdapterError):
+class QdrantFilterError(DataUnsupportedOperationError, QdrantAdapterError):
     """Raised when a data filter cannot be translated to Qdrant."""
 
 
-class QdrantDimensionError(QdrantAdapterError):
+class QdrantDimensionError(DataVectorDimensionError, QdrantAdapterError):
     """Raised when vectors are empty or incompatible with the Qdrant collection."""
 
 
@@ -52,6 +63,7 @@ class QdrantVectorAdapter:
         self._client: Any = _CLIENT_UNSET
         self._models: Any = _MODELS_UNSET
         self._lock = threading.RLock()
+        self._collection_initialized = False
         self.closed = False
 
     def search_vectors(
@@ -62,10 +74,13 @@ class QdrantVectorAdapter:
         options: Mapping[str, Any] | None = None,
     ) -> list[VectorHit]:
         options = dict(options or {})
+        normalized_vector = _normalize_vector(vector)
+        self._validate_dimension(normalized_vector)
+        self._ensure_collection(len(normalized_vector))
         query_filter = self._filter(filters)
         kwargs: dict[str, Any] = {
             "collection_name": self.collection_name(),
-            "query": _normalize_vector(vector),
+            "query": normalized_vector,
             "limit": max(0, int(limit)),
             "with_payload": options.pop("with_payload", True),
             "with_vectors": options.pop("with_vectors", False),
@@ -88,16 +103,23 @@ class QdrantVectorAdapter:
         options = dict(options or {})
         models = self._models_instance()
         try:
+            normalized_items = []
+            for item in items:
+                vector = _normalize_vector(item["vector"])
+                self._validate_dimension(vector)
+                normalized_items.append((item, vector))
             points = [
                 models.PointStruct(
                     id=item["id"],
-                    vector=_normalize_vector(item["vector"]),
+                    vector=vector,
                     payload=dict(item.get("payload", {}) or {}),
                 )
-                for item in items
+                for item, vector in normalized_items
             ]
         except KeyError as exc:
             raise QdrantDimensionError(f"Vector item requires {exc.args[0]}") from exc
+        if normalized_items:
+            self._ensure_collection(len(normalized_items[0][1]))
         kwargs: dict[str, Any] = {"collection_name": self.collection_name(), "points": points}
         if "wait" in options:
             kwargs["wait"] = bool(options["wait"])
@@ -119,6 +141,7 @@ class QdrantVectorAdapter:
         if ids is None and not filters:
             return WriteResult()
         models = self._models_instance()
+        self._ensure_collection()
         if ids is not None:
             selector = models.PointIdsList(points=list(ids))
             deleted = len(ids)
@@ -151,22 +174,30 @@ class QdrantVectorAdapter:
 
     def health(self) -> HealthResult:
         try:
+            self._ensure_collection()
             client = self._client_instance()
             collection = self.collection_name()
-            if hasattr(client, "collection_exists"):
-                exists = bool(client.collection_exists(collection_name=collection))
-            else:
-                client.get_collection(collection_name=collection)
-                exists = True
+            exists = self._collection_initialized
+            if not exists:
+                if hasattr(client, "collection_exists"):
+                    exists = bool(client.collection_exists(collection_name=collection))
+                else:
+                    client.get_collection(collection_name=collection)
+                    exists = True
+        except DataConfigurationError as exc:
+            return HealthResult(status="failed", code="configuration_error", message=str(exc), details={"collection": self.collection_name()})
+        except DataSchemaMismatchError as exc:
+            return HealthResult(status="failed", code="schema_mismatch", message=str(exc), details={"collection": self.collection_name()})
         except Exception as exc:
-            return HealthResult(status="failed", message=self._safe_error(exc), details={"collection": self.collection_name()})
+            return HealthResult(status="failed", code="connection_failed", message=self._safe_error(exc), details={"collection": self.collection_name()})
         if not exists:
             return HealthResult(
                 status="failed",
+                code="resource_missing",
                 message=f"Qdrant collection '{self.collection_name()}' is not available",
                 details={"collection": self.collection_name()},
             )
-        return HealthResult(status="ok", message="Qdrant collection is available", details={"collection": self.collection_name()})
+        return HealthResult(status="ok", code="ok", message="Qdrant collection is available", details={"collection": self.collection_name()})
 
     def close(self) -> None:
         if self._client is _CLIENT_UNSET:
@@ -181,7 +212,105 @@ class QdrantVectorAdapter:
         return self._client_instance()
 
     def collection_name(self) -> str:
-        return str(self.config.options["collection"])
+        try:
+            return str(self.config.options["collection"])
+        except KeyError as exc:
+            raise QdrantConfigError("Qdrant resource requires collection") from exc
+
+    def vector_size(self) -> int | None:
+        value = self.config.options.get("vector_size")
+        if value is None:
+            return None
+        try:
+            normalized = int(value)
+        except (TypeError, ValueError) as exc:
+            raise QdrantConfigError("Qdrant vector_size must be a positive integer") from exc
+        if normalized <= 0:
+            raise QdrantConfigError("Qdrant vector_size must be a positive integer")
+        return normalized
+
+    def distance(self) -> str:
+        value = str(self.config.options.get("distance", "cosine")).lower()
+        if value not in {"cosine", "dot", "euclid"}:
+            raise QdrantConfigError("Qdrant distance must be cosine, dot or euclid")
+        return value
+
+    def payload_indexes(self) -> list[str]:
+        configured = self.config.options.get(
+            "payload_indexes",
+            ["workspace_uid", "resource_type", "section_uid", "category", "status"],
+        )
+        if not isinstance(configured, (list, tuple, set)):
+            raise QdrantConfigError("Qdrant payload_indexes must be a list")
+        return [str(field) for field in configured]
+
+    def _validate_dimension(self, vector: list[float]) -> None:
+        expected = self.vector_size()
+        if expected is not None and len(vector) != expected:
+            raise QdrantDimensionError(
+                f"Qdrant vector dimension mismatch: expected {expected}, got {len(vector)}"
+            )
+
+    def _ensure_collection(self, vector_size: int | None = None) -> None:
+        if self._collection_initialized:
+            return
+        client = self._client_instance()
+        collection = self.collection_name()
+        try:
+            if hasattr(client, "collection_exists"):
+                exists = bool(client.collection_exists(collection_name=collection))
+            else:
+                client.get_collection(collection_name=collection)
+                exists = True
+            if not exists:
+                size = self.vector_size() or vector_size
+                if size is None:
+                    raise QdrantConfigError("Qdrant vector_size is required to create a collection")
+                models = self._models_instance()
+                distance_name = self.distance().upper()
+                distance = getattr(getattr(models, "Distance", None), distance_name, distance_name.title())
+                client.create_collection(
+                    collection_name=collection,
+                    vectors_config=models.VectorParams(size=size, distance=distance),
+                )
+            else:
+                self._validate_existing_collection(client)
+            self._ensure_payload_indexes(client)
+            self._collection_initialized = True
+        except (QdrantConfigError, QdrantDimensionError):
+            raise
+        except Exception as exc:
+            _raise_qdrant_operation_error(exc)
+
+    def _ensure_payload_indexes(self, client: Any) -> None:
+        create = getattr(client, "create_payload_index", None)
+        if not callable(create):
+            return
+        models = self._models_instance()
+        schema_type = getattr(getattr(models, "PayloadSchemaType", None), "KEYWORD", "keyword")
+        for field in self.payload_indexes():
+            try:
+                create(
+                    collection_name=self.collection_name(),
+                    field_name=field,
+                    field_schema=schema_type,
+                )
+            except Exception as exc:
+                if "already exists" not in str(exc).lower():
+                    raise
+
+    def _validate_existing_collection(self, client: Any) -> None:
+        expected = self.vector_size()
+        get_collection = getattr(client, "get_collection", None)
+        if expected is None or not callable(get_collection):
+            return
+        info = get_collection(collection_name=self.collection_name())
+        vectors = getattr(getattr(getattr(info, "config", None), "params", None), "vectors", None)
+        remote_size = getattr(vectors, "size", None)
+        if remote_size is not None and int(remote_size) != expected:
+            raise QdrantDimensionError(
+                f"Qdrant collection dimension mismatch: expected {expected}, got {remote_size}"
+            )
 
     def _client_instance(self):
         if self._client is _CLIENT_UNSET:
@@ -207,7 +336,11 @@ class QdrantVectorAdapter:
 
     def _safe_error(self, exc: Exception) -> str:
         message = str(exc)
-        for key, value in self.config.options.items():
+        try:
+            options = self.config.resolved_options()
+        except DataConfigurationError:
+            options = self.config.options
+        for key, value in options.items():
             if key in {"url", "api_key", "token", "password"} and value:
                 message = message.replace(str(value), "***")
         return message
@@ -300,11 +433,12 @@ def _default_qdrant_client(config: DataResourceConfig):
         client_module = importlib.import_module("qdrant_client")
     except Exception as exc:
         raise QdrantClientMissingError("Install qdrant-client or muscles-data-qdrant to use type=qdrant") from exc
+    options = config.resolved_options()
     kwargs = {
-        "url": config.options["url"],
-        "api_key": config.options.get("api_key"),
-        "timeout": config.options.get("timeout"),
-        "prefer_grpc": config.options.get("prefer_grpc"),
+        "url": options["url"],
+        "api_key": options.get("api_key"),
+        "timeout": options.get("timeout"),
+        "prefer_grpc": options.get("prefer_grpc"),
     }
     kwargs = {key: value for key, value in kwargs.items() if value is not None}
     try:
@@ -331,6 +465,7 @@ def _normalize_vector(vector: Any) -> list[float]:
 
 
 def _hit_from_point(point: Any) -> VectorHit:
+    payload = dict(getattr(point, "payload", {}) or {})
     metadata = {"backend": "qdrant"}
     version = getattr(point, "version", None)
     if version is not None:
@@ -338,8 +473,10 @@ def _hit_from_point(point: Any) -> VectorHit:
     return VectorHit(
         id=str(getattr(point, "id")),
         score=float(getattr(point, "score", 0.0)),
-        payload=dict(getattr(point, "payload", {}) or {}),
+        payload=payload,
         metadata=metadata,
+        text=payload.get("text"),
+        title=payload.get("title"),
     )
 
 

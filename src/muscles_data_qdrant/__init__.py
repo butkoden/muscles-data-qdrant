@@ -3,6 +3,7 @@ from __future__ import annotations
 from .adapter import (
     QdrantAdapterError,
     QdrantClientMissingError,
+    QdrantConfigError,
     QdrantConnectionError,
     QdrantDimensionError,
     QdrantFilterError,
@@ -15,6 +16,7 @@ from .adapter import (
 __all__ = [
     "QdrantAdapterError",
     "QdrantClientMissingError",
+    "QdrantConfigError",
     "QdrantConnectionError",
     "QdrantDimensionError",
     "QdrantFilterError",

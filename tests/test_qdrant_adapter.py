@@ -40,6 +40,8 @@ class FakeQdrantClient:
         self.upserts: list[dict[str, Any]] = []
         self.deletes: list[dict[str, Any]] = []
         self.collection_checks: list[str] = []
+        self.collections_created: list[dict[str, Any]] = []
+        self.payload_indexes: list[dict[str, Any]] = []
         self.closed = False
 
     def query_points(self, **kwargs):
@@ -63,11 +65,30 @@ class FakeQdrantClient:
             raise TimeoutError("qdrant api_key=qdrant-secret timed out")
         return collection_name == "docs"
 
+    def create_collection(self, **kwargs):
+        self.collections_created.append(kwargs)
+
+    def create_payload_index(self, **kwargs):
+        self.payload_indexes.append(kwargs)
+
     def close(self) -> None:
         self.closed = True
 
 
 class FakeModels:
+    class Distance:
+        COSINE = "Cosine"
+        DOT = "Dot"
+        EUCLID = "Euclid"
+
+    class PayloadSchemaType:
+        KEYWORD = "keyword"
+
+    class VectorParams:
+        def __init__(self, *, size: int, distance) -> None:
+            self.size = size
+            self.distance = distance
+
     class MatchValue:
         def __init__(self, value) -> None:
             self.value = value
@@ -116,6 +137,8 @@ def _config() -> dict:
                     "url": "https://qdrant.example",
                     "api_key": "qdrant-secret",
                     "collection": "docs",
+                    "vector_size": 2,
+                    "distance": "cosine",
                     "native_client": True,
                 }
             }
@@ -166,8 +189,10 @@ def test_qdrant_external_adapter_filters_dimensions_and_safe_failures():
         qdrant_filter_from_mapping({"score": {"near": 1.0}}, models=FakeModels)
     with pytest.raises(QdrantDimensionError):
         _runtime(FakeQdrantClient()).require_port("vector.qdrant", VectorSearchPort).search_vectors([])
+    with pytest.raises(QdrantDimensionError):
+        _runtime(FakeQdrantClient()).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0])
     with pytest.raises(QdrantClientMissingError):
-        _runtime(None).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0])
+        _runtime(None).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0, 0.0])
 
     failing = _runtime(FakeQdrantClient(fail_health=True)).doctor()
     assert failing["status"] == "failed"
@@ -176,4 +201,55 @@ def test_qdrant_external_adapter_filters_dimensions_and_safe_failures():
     bad_client = FakeQdrantClient()
     bad_client.query_points = lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("network unavailable"))
     with pytest.raises(QdrantConnectionError):
-        _runtime(bad_client).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0])
+        _runtime(bad_client).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0, 0.0])
+
+
+def test_qdrant_creates_collection_indexes_payload_and_resolves_url_env(monkeypatch):
+    monkeypatch.setenv("QDRANT_URL", "https://qdrant.example")
+    client = FakeQdrantClient()
+    client.collection_exists = lambda collection_name: False
+    captured: list[dict] = []
+    catalog = DataAdapterCatalog.with_defaults()
+    catalog.register(
+        QdrantVectorFactory(
+            client_factory=lambda config: captured.append(config.resolved_options()) or client,
+            models_provider=lambda: FakeModels,
+        )
+    )
+    runtime = DataRuntime(
+        config=DataConfig.from_raw(
+            {
+                "data": {
+                    "resources": {
+                        "vector.qdrant": {
+                            "type": "qdrant",
+                            "url_env": "QDRANT_URL",
+                            "collection": "assetforge_rag",
+                            "vector_size": 2,
+                            "distance": "cosine",
+                            "payload_indexes": ["workspace_uid", "status"],
+                        }
+                    }
+                }
+            }
+        ),
+        catalog=catalog,
+    )
+
+    runtime.require_port("vector.qdrant", VectorSearchPort).upsert_vectors(
+        [{"id": "doc-1", "vector": [1.0, 0.0], "payload": {"status": "ready"}}]
+    )
+
+    assert captured[0]["url"] == "https://qdrant.example"
+    assert client.collections_created[0]["collection_name"] == "assetforge_rag"
+    assert client.collections_created[0]["vectors_config"].size == 2
+    assert {item["field_name"] for item in client.payload_indexes} == {"workspace_uid", "status"}
+
+
+def test_qdrant_rejects_configured_dimension_mismatch_with_existing_collection():
+    client = FakeQdrantClient()
+    client.get_collection = lambda **_kwargs: SimpleNamespace(
+        config=SimpleNamespace(params=SimpleNamespace(vectors=SimpleNamespace(size=3)))
+    )
+    with pytest.raises(QdrantDimensionError, match="expected 2, got 3"):
+        _runtime(client).require_port("vector.qdrant", VectorSearchPort).search_vectors([1.0, 0.0])
