@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Denis B.", email = "denis@butko.info" }]
 dependencies = [
-  "muscles-data>=0.1.0",
+  "muscles-data>=0.1.0,<1.0.0",
   "qdrant-client>=1.10",
 ]
 
