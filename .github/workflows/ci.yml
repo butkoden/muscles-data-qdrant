@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: butkoden/muscles-data
-          ref: feature/task-68-data-rc-readiness
+          ref: main
           path: muscles-data
       - uses: actions/setup-python@v5
         with:
