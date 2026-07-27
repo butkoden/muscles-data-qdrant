@@ -20,6 +20,39 @@ jobs:
       - run: python -m pip install --upgrade pip build
       - run: python -m pip install -e ./muscles-data --no-deps
       - run: python -m pip install -e ".[dev]" --no-deps
-      - run: python -m pip install "pytest>=8.0,<9.0" "qdrant-client>=1.10"
+      - run: python -m pip install "pytest>=8.0,<9.0" "qdrant-client>=1.10,<2.0"
       - run: python -m pytest -q
       - run: python -m build --wheel --sdist
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.18.0
+        ports:
+          - 6333:6333
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: butkoden/muscles
+          ref: main
+          path: muscles
+      - uses: actions/checkout@v4
+        with:
+          repository: butkoden/muscles-data
+          ref: main
+          path: muscles-data
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e ./muscles --no-deps
+      - run: python -m pip install -e ./muscles-data --no-deps
+      - run: python -m pip install -e ".[dev]" --no-deps
+      - run: python -m pip install "pytest>=8.0,<9.0" "qdrant-client>=1.10,<2.0"
+      - run: curl --retry 30 --retry-connrefused --retry-delay 2 http://127.0.0.1:6333/healthz
+      - run: python -m pytest -q -m integration
+        env:
+          MUSCLES_DATA_INTEGRATION: "1"
+          QDRANT_URL: http://127.0.0.1:6333

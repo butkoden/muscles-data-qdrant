@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 authors = [{ name = "Denis B.", email = "denis@butko.info" }]
 dependencies = [
   "muscles-data>=0.1.0,<1.0.0",
-  "qdrant-client>=1.10",
+  "qdrant-client>=1.10,<2.0",
 ]
 
 [project.optional-dependencies]
@@ -21,6 +21,9 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "integration: tests that require the local backend integration stack",
+]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
