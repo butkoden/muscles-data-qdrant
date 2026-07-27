@@ -63,8 +63,6 @@ def test_qdrant_real_collection_vector_lifecycle():
         if contract is not None:
             if "dimension" in inspect.signature(contract).parameters:
                 contract(lambda: vector, dimension=3)
-            else:
-                contract(lambda: vector)
         client = runtime.require_resource("vector.qdrant", DataCapability.NATIVE_CLIENT).native_client()
         client.delete_collection(collection_name=collection)
     finally:
