@@ -35,11 +35,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: butkoden/muscles
-          ref: main
-          path: muscles
-      - uses: actions/checkout@v4
-        with:
           repository: butkoden/muscles-data
           ref: main
           path: muscles-data
@@ -47,7 +42,6 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install -e ./muscles --no-deps
       - run: python -m pip install -e ./muscles-data --no-deps
       - run: python -m pip install -e ".[dev]" --no-deps
       - run: python -m pip install "pytest>=8.0,<9.0" "qdrant-client>=1.10,<2.0"
