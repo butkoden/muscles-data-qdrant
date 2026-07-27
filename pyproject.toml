@@ -14,6 +14,20 @@ dependencies = [
   "qdrant-client>=1.10,<2.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/butkoden/muscles-data-qdrant"
+Repository = "https://github.com/butkoden/muscles-data-qdrant"
+Documentation = "https://github.com/butkoden/muscles-data-qdrant#readme"
+PyPI = "https://pypi.org/project/muscles-data-qdrant/"
+Releases = "https://github.com/butkoden/muscles-data-qdrant/releases"
+"muscles-data" = "https://pypi.org/project/muscles-data/"
+"muscles-data-elasticsearch" = "https://pypi.org/project/muscles-data-elasticsearch/"
+"muscles-data-opensearch" = "https://pypi.org/project/muscles-data-opensearch/"
+"muscles-data-redis" = "https://pypi.org/project/muscles-data-redis/"
+"muscles-data-mongodb" = "https://pypi.org/project/muscles-data-mongodb/"
+"muscles-data-s3" = "https://pypi.org/project/muscles-data-s3/"
+"muscles-data-sqlalchemy" = "https://pypi.org/project/muscles-data-sqlalchemy/"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0,<9.0",
