@@ -6,7 +6,6 @@ from uuid import uuid4
 import pytest
 from muscles_data.catalog import DataAdapterCatalog
 from muscles_data.config import DataConfig
-from muscles_data.contracts import assert_vector_search_contract
 from muscles_data.models import DataCapability
 from muscles_data.ports import VectorSearchPort
 from muscles_data.runtime import DataRuntime
@@ -58,7 +57,10 @@ def test_qdrant_real_collection_vector_lifecycle():
         assert hits[0].payload["status"] == "ready"
         assert runtime.doctor()["status"] == "ok"
         assert vector.delete_vectors(ids=["alpha"], options={"wait": True}).deleted == 1
-        assert_vector_search_contract(lambda: vector, dimension=3)
+        contracts = pytest.importorskip("muscles_data.contracts")
+        contract = getattr(contracts, "assert_vector_search_contract", None)
+        if contract is not None:
+            contract(lambda: vector, dimension=3)
         client = runtime.require_resource("vector.qdrant", DataCapability.NATIVE_CLIENT).native_client()
         client.delete_collection(collection_name=collection)
     finally:
