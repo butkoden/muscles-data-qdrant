@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
 from muscles_data.catalog import DataAdapterCatalog
@@ -169,9 +170,9 @@ def test_qdrant_external_adapter_maps_vector_operations_and_native_access():
     assert [hit.id for hit in hits] == ["doc-1", "doc-2"]
     assert client.queries[0]["query_filter"].must[0].key == "section"
     assert write.written == 1
-    assert client.upserts[0]["points"][0].payload == {"section": "docs"}
+    assert client.upserts[0]["points"][0].payload == {"section": "docs", "_muscles_id": "doc-1"}
     assert deleted.deleted == 1
-    assert client.deletes[0]["points_selector"].points == ["doc-1"]
+    assert client.deletes[0]["points_selector"].points == [str(uuid5(NAMESPACE_URL, "muscles-data:qdrant:doc-1"))]
     assert runtime.require_resource("vector.qdrant", DataCapability.NATIVE_CLIENT).native_client() is client
     assert runtime.doctor()["status"] == "ok"
     assert client.collection_checks == ["docs"]
@@ -244,6 +245,18 @@ def test_qdrant_creates_collection_indexes_payload_and_resolves_url_env(monkeypa
     assert client.collections_created[0]["collection_name"] == "assetforge_rag"
     assert client.collections_created[0]["vectors_config"].size == 2
     assert {item["field_name"] for item in client.payload_indexes} == {"workspace_uid", "status"}
+
+
+def test_qdrant_normalizes_arbitrary_string_ids_for_backend_and_keeps_public_id():
+    client = FakeQdrantClient()
+    runtime = _runtime(client)
+    vector = runtime.require_port("vector.qdrant", VectorSearchPort)
+
+    vector.upsert_vectors([{"id": "document-alpha", "vector": [1.0, 0.0], "payload": {"kind": "doc"}}])
+
+    point = client.upserts[-1]["points"][0]
+    UUID(str(point.id))
+    assert point.payload["_muscles_id"] == "document-alpha"
 
 
 def test_qdrant_rejects_configured_dimension_mismatch_with_existing_collection():

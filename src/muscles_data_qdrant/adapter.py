@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import threading
+import uuid
 from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any, Mapping
@@ -21,6 +22,7 @@ from muscles_data.models import DataCapability, HealthResult, InspectResult, Vec
 _RANGE_OPERATORS = {"gt", "gte", "lt", "lte"}
 _CLIENT_UNSET = object()
 _MODELS_UNSET = object()
+_PUBLIC_ID_FIELD = "_muscles_id"
 
 
 class QdrantAdapterError(DataError):
@@ -110,9 +112,9 @@ class QdrantVectorAdapter:
                 normalized_items.append((item, vector))
             points = [
                 models.PointStruct(
-                    id=item["id"],
+                    id=_qdrant_point_id(str(item["id"])),
                     vector=vector,
-                    payload=dict(item.get("payload", {}) or {}),
+                    payload=_payload_with_public_id(item),
                 )
                 for item, vector in normalized_items
             ]
@@ -143,7 +145,7 @@ class QdrantVectorAdapter:
         models = self._models_instance()
         self._ensure_collection()
         if ids is not None:
-            selector = models.PointIdsList(points=list(ids))
+            selector = models.PointIdsList(points=[_qdrant_point_id(str(item_id)) for item_id in ids])
             deleted = len(ids)
         else:
             selector = models.FilterSelector(filter=self._filter(filters))
@@ -466,18 +468,37 @@ def _normalize_vector(vector: Any) -> list[float]:
 
 def _hit_from_point(point: Any) -> VectorHit:
     payload = dict(getattr(point, "payload", {}) or {})
+    public_id = str(payload.pop(_PUBLIC_ID_FIELD, getattr(point, "id")))
     metadata = {"backend": "qdrant"}
     version = getattr(point, "version", None)
     if version is not None:
         metadata["version"] = version
     return VectorHit(
-        id=str(getattr(point, "id")),
+        id=public_id,
         score=float(getattr(point, "score", 0.0)),
         payload=payload,
         metadata=metadata,
         text=payload.get("text"),
         title=payload.get("title"),
     )
+
+
+def _payload_with_public_id(item: Mapping[str, Any]) -> dict[str, Any]:
+    payload = dict(item.get("payload", {}) or {})
+    item_id = str(item["id"])
+    existing_id = payload.get(_PUBLIC_ID_FIELD)
+    if existing_id is not None and str(existing_id) != item_id:
+        raise QdrantConfigError(f"Qdrant payload field '{_PUBLIC_ID_FIELD}' is reserved")
+    payload[_PUBLIC_ID_FIELD] = item_id
+    return payload
+
+
+def _qdrant_point_id(value: str) -> str | int:
+    """Map the string port id to a Qdrant-supported stable point id."""
+    try:
+        return int(value) if value.isdigit() else str(uuid.UUID(value))
+    except (ValueError, AttributeError):
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"muscles-data:qdrant:{value}"))
 
 
 def _raise_qdrant_operation_error(exc: Exception):
