@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import inspect
 from uuid import uuid4
 
 import pytest
@@ -60,7 +61,10 @@ def test_qdrant_real_collection_vector_lifecycle():
         contracts = pytest.importorskip("muscles_data.contracts")
         contract = getattr(contracts, "assert_vector_search_contract", None)
         if contract is not None:
-            contract(lambda: vector, dimension=3)
+            if "dimension" in inspect.signature(contract).parameters:
+                contract(lambda: vector, dimension=3)
+            else:
+                contract(lambda: vector)
         client = runtime.require_resource("vector.qdrant", DataCapability.NATIVE_CLIENT).native_client()
         client.delete_collection(collection_name=collection)
     finally:
