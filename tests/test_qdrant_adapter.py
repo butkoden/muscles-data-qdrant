@@ -5,14 +5,18 @@ from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
-from muscles_data.catalog import DataAdapterCatalog
-from muscles_data.config import DataConfig
-from muscles_data.models import DataCapability
-from muscles_data.ports import VectorSearchPort
-from muscles_data.runtime import DataRuntime
+from muscles.data.catalog import DataAdapterCatalog
+from muscles.data.config import DataConfig
+from muscles.data.models import DataCapability
+from muscles.data.ports import VectorSearchPort
+from muscles.data.runtime import DataRuntime
+from muscles.data.errors import DataPolicyDeniedError, DataUnsupportedOperationError
+from muscles.data.policies import DataNonAtomicPolicyMode, DataOperationContext, DataPolicyDecision, DataPolicyPipeline, DataPredicate, DataPredicateOperator
+from muscles.data.qdrant import PolicyVectorSearch
 
-from muscles_data_qdrant import (
+from muscles.data.qdrant import (
     QdrantClientMissingError,
+    QdrantConfigError,
     QdrantConnectionError,
     QdrantDimensionError,
     QdrantFilterError,
@@ -47,10 +51,12 @@ class FakeQdrantClient:
 
     def query_points(self, **kwargs):
         self.queries.append(kwargs)
-        return FakeQueryResult([
+        points = [
             FakePoint("doc-1", 0.91, {"section": "docs"}),
             FakePoint("doc-2", 0.42, {"section": "other"}),
-        ])
+        ]
+        offset = kwargs.get("offset", 0)
+        return FakeQueryResult(points[offset:offset + kwargs.get("limit", len(points))])
 
     def upsert(self, **kwargs):
         self.upserts.append(kwargs)
@@ -151,6 +157,188 @@ def _runtime(client: FakeQdrantClient | None):
     catalog = DataAdapterCatalog.with_defaults()
     catalog.register(QdrantVectorFactory(client_factory=lambda _config: client, models_provider=lambda: FakeModels))
     return DataRuntime(config=DataConfig.from_raw(_config()), catalog=catalog)
+
+
+def test_policy_vector_search_filters_before_limit_and_checks_payload():
+    class Policy:
+        def evaluate(self, request):
+            return DataPolicyDecision(predicates=(DataPredicate("section", DataPredicateOperator.EQ, request.context.attributes["section"]),))
+
+    client = FakeQdrantClient()
+    runtime = _runtime(client)
+    store = PolicyVectorSearch(runtime.require_port("vector.qdrant", VectorSearchPort), "vector.qdrant", policies=DataPolicyPipeline((Policy(),)), context=DataOperationContext(attributes={"section": "docs"}))
+    assert [hit.id for hit in store.search_vectors([0.1, 0.2], limit=2)] == ["doc-1"]
+    request = client.queries[0]
+    assert request["limit"] == store.max_scan
+    assert request["with_payload"] is True
+    assert any(condition.key == "section" and condition.match.value == "docs" for condition in request["query_filter"].must)
+
+
+def test_atomic_policy_upsert_uses_version_and_checks_replacement():
+    class Policy:
+        def evaluate(self, request):
+            return DataPolicyDecision(predicates=(DataPredicate("section", DataPredicateOperator.EQ, "docs"),))
+
+    class AtomicBackend:
+        def __init__(self):
+            self.writes = []
+
+        def policy_atomic_supported(self):
+            return True
+
+        def policy_get_atomic(self, document_id):
+            return ({"section": "docs"}, "previous") if document_id == "1" else None
+
+        def policy_atomic_upsert(self, item, marker, expected):
+            self.writes.append((item["id"], marker, expected))
+
+    backend = AtomicBackend()
+    store = PolicyVectorSearch(backend, "vectors", policies=DataPolicyPipeline((Policy(),)))
+    assert store.upsert_vectors([{"id": "1", "payload": {"section": "docs"}}]).written == 1
+    assert store.upsert_vectors([{"id": "2", "payload": {"section": "docs"}}]).written == 1
+    assert backend.writes == [("1", "previous", {"section": "docs"}), ("2", None, {})]
+    with pytest.raises(DataPolicyDeniedError):
+        store.upsert_vectors([{"id": "1", "payload": {"section": "other"}}])
+
+
+def test_atomic_policy_delete_checks_existing_value_and_uses_version():
+    class Policy:
+        def evaluate(self, request):
+            return DataPolicyDecision(predicates=(DataPredicate("section", DataPredicateOperator.EQ, "docs"),))
+
+    class AtomicBackend:
+        def __init__(self):
+            self.deletes = []
+
+        def policy_atomic_supported(self):
+            return True
+
+        def policy_get_atomic(self, document_id):
+            return ({"section": "docs"}, "previous") if document_id == "1" else ({"section": "other"}, "other")
+
+        def policy_atomic_delete(self, document_id, marker, expected):
+            self.deletes.append((document_id, marker, expected))
+
+    backend = AtomicBackend()
+    store = PolicyVectorSearch(backend, "vectors", policies=DataPolicyPipeline((Policy(),)))
+    assert store.delete_vectors(ids=["1"]).deleted == 1
+    assert backend.deletes == [("1", "previous", {"section": "docs"})]
+    with pytest.raises(DataPolicyDeniedError):
+        store.delete_vectors(ids=["2"])
+
+
+def test_adopting_existing_point_requires_maintenance_and_policy():
+    class Policy:
+        def evaluate(self, request):
+            return DataPolicyDecision(predicates=(DataPredicate("section", DataPredicateOperator.EQ, "docs"),))
+
+    class Backend:
+        def __init__(self):
+            self.calls = []
+
+        def policy_atomic_supported(self):
+            return True
+
+        def policy_get(self, document_id):
+            return {"section": "docs", "revision": 3}
+
+        def policy_adopt_existing(self, document_id, expected):
+            self.calls.append((document_id, expected))
+
+    backend = Backend()
+    store = PolicyVectorSearch(backend, "vectors", policies=DataPolicyPipeline((Policy(),)))
+    with pytest.raises(DataUnsupportedOperationError):
+        store.adopt_existing("1", expected_fields={"revision": 3}, maintenance_confirmed=False)
+    store.adopt_existing("1", expected_fields={"revision": 3}, maintenance_confirmed=True)
+    assert backend.calls == [("1", {"revision": 3, "section": "docs"})]
+    with pytest.raises(DataPolicyDeniedError):
+        store.adopt_existing("1", expected_fields={"revision": 4}, maintenance_confirmed=True)
+
+
+def test_atomic_policy_modes_are_not_enabled_for_qdrant_116():
+    client = FakeQdrantClient()
+    client.info = lambda: SimpleNamespace(version="1.16.3")
+    config = _config()
+    config["data"]["resources"]["vector.qdrant"]["policy_atomic_managed"] = True
+    catalog = DataAdapterCatalog.with_defaults()
+    catalog.register(QdrantVectorFactory(client_factory=lambda _: client, models_provider=lambda: FakeModels))
+    adapter = DataRuntime(config=DataConfig.from_raw(config), catalog=catalog).require_port("vector.qdrant", VectorSearchPort)
+    assert adapter.policy_atomic_supported() is False
+
+
+def test_atomic_policy_requires_explicit_managed_writer_configuration():
+    client = FakeQdrantClient()
+    client.info = lambda: SimpleNamespace(version="1.17.1")
+    adapter = _runtime(client).require_port("vector.qdrant", VectorSearchPort)
+    assert adapter.policy_atomic_supported() is False
+
+
+def test_managed_resource_blocks_public_unprotected_writes_and_native_access():
+    config = _config()
+    config["data"]["resources"]["vector.qdrant"]["policy_atomic_managed"] = True
+    client = FakeQdrantClient()
+    catalog = DataAdapterCatalog.with_defaults()
+    catalog.register(QdrantVectorFactory(client_factory=lambda _: client, models_provider=lambda: FakeModels))
+    runtime = DataRuntime(config=DataConfig.from_raw(config), catalog=catalog)
+    adapter = runtime.require_port("vector.qdrant", VectorSearchPort)
+    with pytest.raises(DataUnsupportedOperationError):
+        adapter.upsert_vectors([{"id": "1", "vector": [1.0, 0.0]}])
+    with pytest.raises(DataUnsupportedOperationError):
+        adapter.delete_vectors(ids=["1"])
+    with pytest.raises(DataUnsupportedOperationError):
+        adapter.native_client()
+    assert not client.upserts and not client.deletes
+
+
+def test_policy_operation_marker_is_reserved_and_hidden():
+    client = FakeQdrantClient()
+    adapter = _runtime(client).require_port("vector.qdrant", VectorSearchPort)
+    with pytest.raises(QdrantConfigError, match="reserved"):
+        adapter.upsert_vectors([{"id": "x", "vector": [1.0, 0.0], "payload": {"_muscles_policy_operation": "forged"}}])
+    from muscles.data.qdrant.adapter import _hit_from_point
+    hit = _hit_from_point(FakePoint("x", 1.0, {"_muscles_policy_operation": "secret", "name": "safe"}))
+    assert hit.payload == {"name": "safe"}
+
+
+def test_policy_vector_search_with_local_qdrant():
+    qdrant = pytest.importorskip("qdrant_client")
+    models = pytest.importorskip("qdrant_client.models")
+
+    class Policy:
+        def evaluate(self, request):
+            return DataPolicyDecision(predicates=(DataPredicate("section", DataPredicateOperator.EQ, "docs"),))
+
+    client = qdrant.QdrantClient(":memory:")
+    client.create_collection("docs", vectors_config=models.VectorParams(size=2, distance=models.Distance.COSINE))
+    client.upsert("docs", points=[
+        models.PointStruct(id=1, vector=[1.0, 0.0], payload={"section": "docs"}),
+        models.PointStruct(id=2, vector=[0.9, 0.1], payload={"section": ["docs", "other"]}),
+        models.PointStruct(id=3, vector=[0.8, 0.2], payload={"section": "docs"}),
+    ], wait=True)
+    runtime = DataRuntime(config=DataConfig.from_raw(_config()), catalog=_catalog_for_local(client, models))
+    try:
+        store = PolicyVectorSearch(runtime.require_port("vector.qdrant", VectorSearchPort), "vector.qdrant", policies=DataPolicyPipeline((Policy(),)), max_scan=4)
+        assert [hit.id for hit in store.search_vectors([1.0, 0.0], limit=2)] == ["1", "3"]
+        # Exercise the explicitly opted-in legacy path independently of the
+        # installed local client's reported server version.
+        runtime.require_port("vector.qdrant", VectorSearchPort).policy_atomic_supported = lambda: False
+        prechecked = PolicyVectorSearch(
+            runtime.require_port("vector.qdrant", VectorSearchPort), "vector.qdrant",
+            policies=DataPolicyPipeline((Policy(),), non_atomic_mode=DataNonAtomicPolicyMode.ALLOW_PRECHECK),
+        )
+        with pytest.raises(DataPolicyDeniedError):
+            prechecked.upsert_vectors([{"id": "2", "vector": [1.0, 0.0], "payload": {"section": "docs"}}])
+        prechecked.upsert_vectors([{"id": "1", "vector": [1.0, 0.0], "payload": {"section": "docs"}}], options=None)
+        with pytest.raises(DataPolicyDeniedError):
+            prechecked.delete_vectors(ids=["2"])
+    finally:
+        runtime.close()
+
+
+def _catalog_for_local(client, models):
+    catalog = DataAdapterCatalog.with_defaults()
+    catalog.register(QdrantVectorFactory(client_factory=lambda _config: client, models_provider=lambda: models))
+    return catalog
 
 
 def test_qdrant_external_adapter_maps_vector_operations_and_native_access():

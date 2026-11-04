@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "muscles-data-qdrant"
-version = "0.1.1"
+version = "0.2.0"
 description = "Qdrant VectorSearchPort adapter for muscles-data"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "Denis B.", email = "denis@butko.info" }]
 dependencies = [
-  "muscles-data>=0.1.0,<1.0.0",
+  "muscles-data>=0.2.0,<1.0.0",
   "qdrant-client>=1.10,<2.0",
 ]
 
@@ -44,3 +44,4 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["muscles.data.qdrant*"]

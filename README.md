@@ -27,19 +27,21 @@ Qdrant-backed `VectorSearchPort` implementation.
 
 ## Usage
 
-Register the factory in the project composition root:
+Register this adapter once in the application composition root when building
+the shared `DataAdapterCatalog`, alongside other configured adapters:
 
 ```python
-from muscles_data.catalog import DataAdapterCatalog
-from muscles_data.ports import VectorSearchPort
-from muscles_data.runtime import DataRuntime
-from muscles_data_qdrant import QdrantVectorFactory
-
-catalog = DataAdapterCatalog.with_defaults()
 catalog.register(QdrantVectorFactory())
+```
 
-runtime = DataRuntime(config=config, catalog=catalog)
-vector = runtime.require_port("vector.docs", VectorSearchPort)
+The `vector.docs` resource itself is declared in the application's central
+`data.resources` configuration shown below. A package resolves the port from
+the existing runtime; it does not build another catalog or `DataRuntime`:
+
+```python
+from muscles.data.ports import VectorSearchPort
+
+vector = app.resource.connect("vector.docs", VectorSearchPort)
 ```
 
 Resource config stays in the project:
@@ -50,7 +52,7 @@ data:
     vector.docs:
       type: qdrant
       url_env: QDRANT_URL
-      api_key: ${QDRANT_API_KEY}
+      api_key: !environ QDRANT_API_KEY
       collection: docs
       vector_size: 1536
       distance: cosine

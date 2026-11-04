@@ -1,0 +1,1155 @@
+{
+  "version": "1.0.0",
+  "schema_version": 1,
+  "project": {
+    "name": "muscles-data-qdrant",
+    "is_monorepo": false,
+    "total_files": 11,
+    "entry_points": [],
+    "tech_stack": [
+      {
+        "name": "SQLAlchemy",
+        "version": null,
+        "category": "database"
+      },
+      {
+        "name": "Python",
+        "version": null,
+        "category": "language"
+      }
+    ],
+    "entry_candidates": [],
+    "graph_mode": "flow"
+  },
+  "nodes": [
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantAdapterError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantAdapterError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantClientMissingError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantClientMissingError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantConfigError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantConfigError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantConnectionError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantConnectionError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantDimensionError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantDimensionError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantFilterError",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantFilterError",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantVectorAdapter",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantVectorAdapter",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "class:src/muscles_data_qdrant/adapter.py:QdrantVectorFactory",
+      "type": "class",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "QdrantVectorFactory",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "file:.github/workflows/ci.yml",
+      "type": "pipeline",
+      "filePath": ".github/workflows/ci.yml",
+      "language": "yaml",
+      "symbolCount": 0,
+      "lineCount": 36,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 1,
+      "tags": [
+        "config",
+        "ci"
+      ],
+      "summary": "GitHub Actions CI/CD workflow definition."
+    },
+    {
+      "id": "file:.github/workflows/release.yml",
+      "type": "pipeline",
+      "filePath": ".github/workflows/release.yml",
+      "language": "yaml",
+      "symbolCount": 0,
+      "lineCount": 28,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 2,
+      "tags": [
+        "config",
+        "ci"
+      ],
+      "summary": "GitHub Actions CI/CD workflow definition."
+    },
+    {
+      "id": "file:CHANGELOG.md",
+      "type": "document",
+      "filePath": "CHANGELOG.md",
+      "language": "markdown",
+      "symbolCount": 0,
+      "lineCount": 6,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 3,
+      "tags": [],
+      "summary": "Release history and notable changes."
+    },
+    {
+      "id": "file:README.md",
+      "type": "document",
+      "filePath": "README.md",
+      "language": "markdown",
+      "symbolCount": 0,
+      "lineCount": 64,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 4,
+      "tags": [],
+      "summary": "Project overview and entry point for new readers."
+    },
+    {
+      "id": "file:docs/release-candidate.md",
+      "type": "document",
+      "filePath": "docs/release-candidate.md",
+      "language": "markdown",
+      "symbolCount": 0,
+      "lineCount": 16,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 5,
+      "tags": [],
+      "summary": "Documentation: release-candidate.md."
+    },
+    {
+      "id": "file:pyproject.toml",
+      "type": "config",
+      "filePath": "pyproject.toml",
+      "language": "toml",
+      "symbolCount": 0,
+      "lineCount": 38,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 6,
+      "tags": [
+        "config"
+      ],
+      "summary": "Python project metadata, dependencies, and build configuration."
+    },
+    {
+      "id": "file:src/muscles_data_qdrant/__init__.py",
+      "type": "file",
+      "filePath": "src/muscles_data_qdrant/__init__.py",
+      "language": "python",
+      "symbolCount": 1,
+      "lineCount": 14,
+      "complexity": "simple",
+      "pagerank": 0.214275,
+      "communityId": 0,
+      "tags": [],
+      "summary": "Application module __init__ (1 symbols).",
+      "primaryOwner": "Denis Butko"
+    },
+    {
+      "id": "file:src/muscles_data_qdrant/adapter.py",
+      "type": "file",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "language": "python",
+      "symbolCount": 46,
+      "lineCount": 518,
+      "complexity": "complex",
+      "pagerank": 0.242494,
+      "communityId": 0,
+      "tags": [],
+      "summary": "Application module adapter defining QdrantAdapterError, QdrantConfigError, QdrantClientMissingError.",
+      "primaryOwner": "Denis Butko"
+    },
+    {
+      "id": "file:tests/test_integration 2.py",
+      "type": "file",
+      "filePath": "tests/test_integration 2.py",
+      "language": "python",
+      "symbolCount": 2,
+      "lineCount": 64,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 0,
+      "tags": [
+        "test"
+      ],
+      "summary": "Tests for integration 2."
+    },
+    {
+      "id": "file:tests/test_integration.py",
+      "type": "file",
+      "filePath": "tests/test_integration.py",
+      "language": "python",
+      "symbolCount": 2,
+      "lineCount": 68,
+      "complexity": "simple",
+      "pagerank": 0.060359,
+      "communityId": 0,
+      "tags": [
+        "test"
+      ],
+      "summary": "Tests for integration.",
+      "primaryOwner": "Denis Butko"
+    },
+    {
+      "id": "file:tests/test_qdrant_adapter.py",
+      "type": "file",
+      "filePath": "tests/test_qdrant_adapter.py",
+      "language": "python",
+      "symbolCount": 41,
+      "lineCount": 244,
+      "complexity": "complex",
+      "pagerank": 0.060359,
+      "communityId": 0,
+      "tags": [
+        "test"
+      ],
+      "summary": "Tests for qdrant_adapter.",
+      "primaryOwner": "Denis Butko"
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:__init__",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "__init__",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_client_instance",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_client_instance",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_conditions_from_mapping",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_conditions_from_mapping",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_default_qdrant_client",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_default_qdrant_client",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_default_qdrant_models",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_default_qdrant_models",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_ensure_collection",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_ensure_collection",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_ensure_payload_indexes",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_ensure_payload_indexes",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_field_condition",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_field_condition",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_filter",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_filter",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_hit_from_point",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_hit_from_point",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_logical_conditions",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_logical_conditions",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_models_instance",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_models_instance",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_normalize_vector",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_normalize_vector",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_payload_with_public_id",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_payload_with_public_id",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_qdrant_point_id",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_qdrant_point_id",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_raise_qdrant_operation_error",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_raise_qdrant_operation_error",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_safe_error",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_safe_error",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_validate_dimension",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_validate_dimension",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:_validate_existing_collection",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "_validate_existing_collection",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:capabilities",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "capabilities",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:close",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "close",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:collection_name",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "collection_name",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:create",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "create",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:delete_vectors",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "delete_vectors",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:distance",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "distance",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:health",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "health",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:inspect",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "inspect",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:native_client",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "native_client",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:payload_indexes",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "payload_indexes",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:qdrant_filter_from_mapping",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "qdrant_filter_from_mapping",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:search_vectors",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "search_vectors",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:upsert_vectors",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "upsert_vectors",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:src/muscles_data_qdrant/adapter.py:vector_size",
+      "type": "function",
+      "filePath": "src/muscles_data_qdrant/adapter.py",
+      "name": "vector_size",
+      "language": "python",
+      "tags": [],
+      "summary": ""
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:src/muscles_data_qdrant/__init__.py",
+      "target": "file:src/muscles_data_qdrant/adapter.py",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantAdapterError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantClientMissingError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantConfigError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantConnectionError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantDimensionError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantFilterError",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantVectorAdapter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "class:src/muscles_data_qdrant/adapter.py:QdrantVectorFactory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:__init__",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_client_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_conditions_from_mapping",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_default_qdrant_client",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_default_qdrant_models",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_ensure_collection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_ensure_payload_indexes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_field_condition",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_filter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_hit_from_point",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_logical_conditions",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_models_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_normalize_vector",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_payload_with_public_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_qdrant_point_id",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_raise_qdrant_operation_error",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_safe_error",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_validate_dimension",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_validate_existing_collection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:capabilities",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:close",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:collection_name",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:delete_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:distance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:health",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:inspect",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:native_client",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:payload_indexes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:qdrant_filter_from_mapping",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:search_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:upsert_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py",
+      "target": "function:src/muscles_data_qdrant/adapter.py:vector_size",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:__init__",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_client_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_ensure_collection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_ensure_payload_indexes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_filter",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_models_instance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_safe_error",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_validate_dimension",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:_validate_existing_collection",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:close",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:collection_name",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:delete_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:distance",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:health",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:inspect",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:native_client",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:payload_indexes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:search_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:upsert_vectors",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorAdapter",
+      "target": "function:src/muscles_data_qdrant/adapter.py:vector_size",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorFactory",
+      "target": "function:src/muscles_data_qdrant/adapter.py:__init__",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorFactory",
+      "target": "function:src/muscles_data_qdrant/adapter.py:capabilities",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:src/muscles_data_qdrant/adapter.py::QdrantVectorFactory",
+      "target": "function:src/muscles_data_qdrant/adapter.py:create",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_integration 2.py",
+      "target": "file:src/muscles_data_qdrant/__init__.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_integration.py",
+      "target": "file:src/muscles_data_qdrant/__init__.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/test_qdrant_adapter.py",
+      "target": "file:src/muscles_data_qdrant/__init__.py",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:application",
+      "name": "Application",
+      "description": "",
+      "nodeIds": [
+        "file:CHANGELOG.md",
+        "file:README.md",
+        "file:pyproject.toml",
+        "file:src/muscles_data_qdrant/__init__.py",
+        "file:src/muscles_data_qdrant/adapter.py"
+      ],
+      "display_order": 0,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:config",
+      "name": "Config",
+      "description": "",
+      "nodeIds": [
+        "file:.github/workflows/ci.yml",
+        "file:.github/workflows/release.yml"
+      ],
+      "display_order": 1,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:docs-tooling",
+      "name": "Docs & Tooling",
+      "description": "",
+      "nodeIds": [
+        "file:docs/release-candidate.md"
+      ],
+      "display_order": 2,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:test",
+      "name": "Test",
+      "description": "",
+      "nodeIds": [
+        "file:tests/test_integration 2.py",
+        "file:tests/test_integration.py",
+        "file:tests/test_qdrant_adapter.py"
+      ],
+      "display_order": 3,
+      "order_basis": "canonical"
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "target_path": "README.md",
+      "page_type": "repo_overview",
+      "title": "README.md",
+      "depth": 0,
+      "kind": "overview",
+      "reason": "Start here for the end-to-end picture before diving into the code.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 2,
+      "target_path": "src/muscles_data_qdrant/__init__.py",
+      "page_type": "file_page",
+      "title": "__init__.py",
+      "depth": 0,
+      "kind": "code",
+      "reason": "The walk's anchor \u2014 its imports fan out the widest in a repo with no single entry point.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 3,
+      "target_path": "src/muscles_data_qdrant/adapter.py",
+      "page_type": "file_page",
+      "title": "adapter.py",
+      "depth": 1,
+      "kind": "code",
+      "reason": "Directly imported by the anchor above; a core collaborator.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 4,
+      "target_path": "tests/test_integration 2.py",
+      "page_type": "file_page",
+      "title": "test_integration 2.py",
+      "depth": 2,
+      "kind": "code",
+      "reason": "The test suite \u2014 how the system's behavior is verified.",
+      "layer_id": "layer:test"
+    }
+  ],
+  "modules": [
+    {
+      "id": "module:application",
+      "name": "Application",
+      "path": "",
+      "layerId": "layer:application",
+      "nodeIds": [
+        "file:CHANGELOG.md",
+        "file:README.md",
+        "file:pyproject.toml",
+        "file:src/muscles_data_qdrant/__init__.py",
+        "file:src/muscles_data_qdrant/adapter.py"
+      ],
+      "wholeLayer": true,
+      "language": "markdown"
+    },
+    {
+      "id": "module:tests",
+      "name": "Test",
+      "path": "tests",
+      "layerId": "layer:test",
+      "nodeIds": [
+        "file:tests/test_integration 2.py",
+        "file:tests/test_integration.py",
+        "file:tests/test_qdrant_adapter.py"
+      ],
+      "wholeLayer": true,
+      "language": "python"
+    }
+  ]
+}

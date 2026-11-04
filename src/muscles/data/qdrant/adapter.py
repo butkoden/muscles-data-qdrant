@@ -1,28 +1,35 @@
 from __future__ import annotations
 
 import importlib
+import hashlib
+import inspect
+import re
 import threading
 import uuid
 from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any, Mapping
+from urllib.parse import urlsplit
 
-from muscles_data.config import DataResourceConfig
-from muscles_data.errors import (
+from muscles.data.config import DataResourceConfig
+from muscles.data.errors import (
     DataConfigurationError,
     DataConnectionError,
     DataError,
     DataSchemaMismatchError,
     DataUnsupportedOperationError,
     DataVectorDimensionError,
+    DataWriteOutcomeUnknownError,
 )
-from muscles_data.models import DataCapability, HealthResult, InspectResult, VectorHit, WriteResult
+from muscles.data.models import DataCapability, HealthResult, InspectResult, VectorHit, WriteResult
 
 
 _RANGE_OPERATORS = {"gt", "gte", "lt", "lte"}
 _CLIENT_UNSET = object()
 _MODELS_UNSET = object()
 _PUBLIC_ID_FIELD = "_muscles_id"
+_POLICY_TOKEN_FIELD = "_muscles_policy_operation"
+_POLICY_DELETED_FIELD = "_muscles_policy_deleted"
 
 
 class QdrantAdapterError(DataError):
@@ -58,15 +65,238 @@ class QdrantVectorAdapter:
         *,
         client_factory: Callable[[DataResourceConfig], Any] | None = None,
         models_provider: Callable[[], Any] | None = None,
+        operation_journal: Any = None,
     ) -> None:
         self.config = config
         self._client_factory = client_factory
         self._models_provider = models_provider
+        self._operation_journal = operation_journal
+        self._journal_scope: str | None = None
         self._client: Any = _CLIENT_UNSET
         self._models: Any = _MODELS_UNSET
         self._lock = threading.RLock()
         self._collection_initialized = False
         self.closed = False
+
+    def _operation_scope(self) -> str:
+        if self._journal_scope is not None:
+            return self._journal_scope
+        options = self.config.resolved_options()
+        url = str(options.get("url", ""))
+        parsed = urlsplit(url)
+        if not parsed.scheme or not parsed.hostname:
+            raise QdrantConfigError("Operation recovery requires a configured Qdrant URL")
+        namespace = options.get("policy_journal_scope", "")
+        if not isinstance(namespace, str):
+            raise QdrantConfigError("policy_journal_scope must be a string")
+        identity = repr((parsed.scheme.lower(), parsed.hostname.lower(), parsed.port, parsed.path, namespace))
+        self._journal_scope = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        return self._journal_scope
+
+    def policy_get(self, document_id: str) -> Mapping[str, Any] | None:
+        """Read current payload for an explicitly enabled non-atomic precheck."""
+        self._ensure_collection()
+        try:
+            points = self._client_instance().retrieve(
+                collection_name=self.collection_name(),
+                ids=[_qdrant_point_id(str(document_id))],
+                with_payload=True,
+                with_vectors=False,
+            )
+        except Exception as exc:
+            _raise_qdrant_operation_error(exc)
+        if not points:
+            return None
+        payload = dict(points[0].payload or {})
+        if _POLICY_DELETED_FIELD in payload:
+            return None
+        payload.pop(_POLICY_TOKEN_FIELD, None)
+        return payload
+
+    def policy_atomic_supported(self) -> bool:
+        """Require an explicit managed-writer invariant and Qdrant 1.17+."""
+        if self.config.options.get("policy_atomic_managed") is not True:
+            return False
+        client = self._client_instance()
+        if not callable(getattr(client, "info", None)):
+            return False
+        info = client.info()
+        version = str(getattr(info, "version", ""))
+        match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", version)
+        if not match or tuple(map(int, match.groups())) < (1, 17, 0):
+            return False
+        parameters = inspect.signature(client.upsert).parameters
+        models = self._models_instance()
+        return ("update_mode" in parameters and "update_filter" in parameters
+                and hasattr(models, "UpdateMode") and hasattr(models, "WriteOrdering"))
+
+    def policy_get_atomic(self, document_id: str):
+        self._ensure_collection()
+        try:
+            points = self._client_instance().retrieve(
+                collection_name=self.collection_name(), ids=[_qdrant_point_id(str(document_id))],
+                with_payload=True, with_vectors=False, consistency="all",
+            )
+        except Exception as exc:
+            _raise_qdrant_operation_error(exc)
+        if not points:
+            return None
+        payload = dict(points[0].payload or {})
+        if _POLICY_DELETED_FIELD in payload:
+            raise DataUnsupportedOperationError("A protected deletion tombstone cannot be overwritten")
+        marker = payload.pop(_POLICY_TOKEN_FIELD, None)
+        if not isinstance(marker, str) or not re.fullmatch(r"[0-9a-f]{32}", marker):
+            raise DataUnsupportedOperationError("Existing point has no managed policy version")
+        return payload, marker
+
+    def policy_atomic_upsert(self, item: Mapping[str, Any], expected_marker: str | None,
+                             expected_fields: Mapping[str, Any]) -> None:
+        if expected_marker is not None and (not isinstance(expected_marker, str) or not re.fullmatch(r"[0-9a-f]{32}", expected_marker)):
+            raise ValueError("Invalid expected policy version")
+        models = self._models_instance()
+        document_id = str(item["id"])
+        vector = _normalize_vector(item["vector"])
+        self._validate_dimension(vector)
+        payload = _payload_with_public_id(item)
+        marker = uuid.uuid4().hex
+        payload[_POLICY_TOKEN_FIELD] = marker
+        self._ensure_collection(len(vector))
+        point = models.PointStruct(id=_qdrant_point_id(document_id), vector=vector, payload=payload)
+        mode = models.UpdateMode.INSERT_ONLY if expected_marker is None else models.UpdateMode.UPDATE_ONLY
+        clauses = self._policy_atomic_conditions(expected_marker, expected_fields)
+        condition = None if expected_marker is None else models.Filter(must=clauses)
+        if self._operation_journal is not None:
+            self._operation_journal.prepare(self.config.name, self.collection_name(), document_id, marker, scope=self._operation_scope())
+        try:
+            self._client_instance().upsert(
+                collection_name=self.collection_name(), points=[point], wait=True,
+                ordering=models.WriteOrdering.STRONG, update_mode=mode, update_filter=condition,
+            )
+        except Exception as exc:
+            raise DataWriteOutcomeUnknownError(document_id=document_id, operation_id=marker) from exc
+        if self.policy_confirm_upsert(document_id, marker) is not True:
+            raise DataWriteOutcomeUnknownError(document_id=document_id, operation_id=marker)
+
+    def _policy_atomic_conditions(self, expected_marker: str | None, expected_fields: Mapping[str, Any]):
+        models = self._models_instance()
+        clauses = [
+            models.FieldCondition(key=_POLICY_TOKEN_FIELD, match=models.MatchValue(value=expected_marker)),
+            models.FieldCondition(key=_POLICY_TOKEN_FIELD, values_count=models.ValuesCount(gte=1, lte=1)),
+        ] if expected_marker else []
+        for field, value in expected_fields.items():
+            if value is None:
+                clauses.append(models.IsNullCondition(is_null=models.PayloadField(key=field)))
+            elif type(value) in (str, int, bool):
+                clauses.extend([
+                    models.FieldCondition(key=field, match=models.MatchValue(value=value)),
+                    models.FieldCondition(key=field, values_count=models.ValuesCount(gte=1, lte=1)),
+                ])
+            else:
+                raise DataUnsupportedOperationError("Qdrant cannot atomically verify this policy field type")
+        return clauses
+
+    def policy_atomic_delete(self, document_id: str, expected_marker: str, expected_fields: Mapping[str, Any]) -> None:
+        if not isinstance(expected_marker, str) or not re.fullmatch(r"[0-9a-f]{32}", expected_marker):
+            raise ValueError("Invalid expected policy version")
+        models = self._models_instance()
+        marker = uuid.uuid4().hex
+        clauses = self._policy_atomic_conditions(expected_marker, expected_fields)
+        clauses.append(models.HasIdCondition(has_id=[_qdrant_point_id(str(document_id))]))
+        selector = models.Filter(must=clauses, must_not=[models.FieldCondition(
+            key=_POLICY_DELETED_FIELD, match=models.MatchValue(value=True),
+        )])
+        if self._operation_journal is not None:
+            self._operation_journal.prepare(self.config.name, self.collection_name(), str(document_id), marker, operation_kind="delete", scope=self._operation_scope())
+        try:
+            self._client_instance().set_payload(
+                collection_name=self.collection_name(), points=selector, wait=True,
+                ordering=models.WriteOrdering.STRONG,
+                payload={_POLICY_TOKEN_FIELD: marker, _POLICY_DELETED_FIELD: True},
+            )
+        except Exception as exc:
+            raise DataWriteOutcomeUnknownError(document_id=str(document_id), operation_id=marker, operation_kind="delete") from exc
+        if self.policy_confirm_delete(str(document_id), marker) is not True:
+            raise DataWriteOutcomeUnknownError(document_id=str(document_id), operation_id=marker, operation_kind="delete")
+
+    def policy_adopt_existing(self, document_id: str, expected_fields: Mapping[str, Any]) -> None:
+        """Attach a marker conditionally during an externally enforced maintenance window."""
+        if not self.policy_atomic_supported():
+            raise DataUnsupportedOperationError("Backend does not support managed adoption")
+        try:
+            existing = self._client_instance().retrieve(
+                collection_name=self.collection_name(), ids=[_qdrant_point_id(str(document_id))],
+                with_payload=True, with_vectors=False, consistency="all",
+            )
+        except Exception as exc:
+            _raise_qdrant_operation_error(exc)
+        if not existing or _POLICY_TOKEN_FIELD in (existing[0].payload or {}) or _POLICY_DELETED_FIELD in (existing[0].payload or {}):
+            raise DataUnsupportedOperationError("Point is missing, already managed, or carries a reserved marker")
+        models = self._models_instance()
+        marker = uuid.uuid4().hex
+        clauses = self._policy_atomic_conditions(None, expected_fields)
+        clauses.extend([
+            models.HasIdCondition(has_id=[_qdrant_point_id(str(document_id))]),
+            models.IsEmptyCondition(is_empty=models.PayloadField(key=_POLICY_TOKEN_FIELD)),
+        ])
+        selector = models.Filter(must=clauses, must_not=[models.FieldCondition(
+            key=_POLICY_DELETED_FIELD, match=models.MatchValue(value=True),
+        )])
+        if self._operation_journal is not None:
+            self._operation_journal.prepare(self.config.name, self.collection_name(), str(document_id), marker, operation_kind="adopt", scope=self._operation_scope())
+        try:
+            self._client_instance().set_payload(
+                collection_name=self.collection_name(), points=selector, wait=True,
+                ordering=models.WriteOrdering.STRONG, payload={_POLICY_TOKEN_FIELD: marker},
+            )
+        except Exception as exc:
+            raise DataWriteOutcomeUnknownError(document_id=str(document_id), operation_id=marker, operation_kind="adopt") from exc
+        if self.policy_confirm_upsert(str(document_id), marker) is not True:
+            raise DataWriteOutcomeUnknownError(document_id=str(document_id), operation_id=marker, operation_kind="adopt")
+
+    def policy_confirm_upsert(self, document_id: str, operation_id: str) -> bool | None:
+        """Return True on matching marker; None means the outcome remains unknown."""
+        return self._policy_confirm(document_id, operation_id, deleted=False)
+
+    def policy_confirm_delete(self, document_id: str, operation_id: str) -> bool | None:
+        return self._policy_confirm(document_id, operation_id, deleted=True)
+
+    def _policy_confirm(self, document_id: str, operation_id: str, *, deleted: bool) -> bool | None:
+        if not isinstance(operation_id, str) or not re.fullmatch(r"[0-9a-f]{32}", operation_id):
+            raise ValueError("operation_id must be a lowercase UUID token")
+        try:
+            records = self._client_instance().retrieve(
+                collection_name=self.collection_name(), ids=[_qdrant_point_id(str(document_id))],
+                with_payload=True, with_vectors=False, consistency="all",
+            )
+        except Exception:
+            return None
+        if not records or (records[0].payload or {}).get(_POLICY_TOKEN_FIELD) != operation_id:
+            return None
+        payload = records[0].payload or {}
+        if deleted and payload.get(_POLICY_DELETED_FIELD) is not True:
+            return None
+        if not deleted and _POLICY_DELETED_FIELD in payload:
+            return None
+        if self._operation_journal is not None:
+            try:
+                self._operation_journal.confirm(operation_id, scope=self._operation_scope())
+            except KeyError:
+                pass
+            except Exception:
+                return None
+        return True
+
+    def policy_reconcile_pending(self) -> list[dict[str, Any]]:
+        if self._operation_journal is None:
+            raise DataUnsupportedOperationError("Operation journal is not configured")
+        result = []
+        for item in self._operation_journal.pending(self.config.name, scope=self._operation_scope()):
+            if item["collection"] != self.collection_name():
+                continue
+            confirm = self.policy_confirm_delete if item["operation_kind"] == "delete" else self.policy_confirm_upsert
+            confirmed = confirm(item["document_id"], item["operation_id"])
+            result.append({**item, "confirmed": confirmed})
+        return result
 
     def search_vectors(
         self,
@@ -79,6 +309,13 @@ class QdrantVectorAdapter:
         normalized_vector = _normalize_vector(vector)
         self._validate_dimension(normalized_vector)
         self._ensure_collection(len(normalized_vector))
+        if self.config.options.get("policy_atomic_managed") is True:
+            if options.get("with_payload", True) is not True:
+                raise QdrantConfigError("Managed policy search requires full payload")
+            if options.get("consistency", "all") != "all":
+                raise QdrantConfigError("Managed policy search requires all-replica consistency")
+            options["consistency"] = "all"
+            filters = {"$and": [dict(filters or {}), {"$not": {_POLICY_DELETED_FIELD: True}}]}
         query_filter = self._filter(filters)
         kwargs: dict[str, Any] = {
             "collection_name": self.collection_name(),
@@ -89,7 +326,7 @@ class QdrantVectorAdapter:
         }
         if query_filter is not None:
             kwargs["query_filter"] = query_filter
-        for key in ("score_threshold", "using", "search_params", "params", "consistency", "shard_key_selector"):
+        for key in ("score_threshold", "using", "search_params", "params", "consistency", "shard_key_selector", "offset"):
             if key in options:
                 kwargs[key] = options[key]
         try:
@@ -99,9 +336,13 @@ class QdrantVectorAdapter:
         except Exception as exc:
             _raise_qdrant_operation_error(exc)
         points = getattr(result, "points", result)
+        if self.config.options.get("policy_atomic_managed") is True:
+            points = [point for point in points if _POLICY_DELETED_FIELD not in (getattr(point, "payload", None) or {})]
         return [_hit_from_point(point) for point in points]
 
     def upsert_vectors(self, items: list[Mapping[str, Any]], options: Mapping[str, Any] | None = None) -> WriteResult:
+        if self.config.options.get("policy_atomic_managed") is True:
+            raise DataUnsupportedOperationError("Managed Qdrant writes require a policy-aware vector port")
         options = dict(options or {})
         models = self._models_instance()
         try:
@@ -139,6 +380,8 @@ class QdrantVectorAdapter:
         filters: Mapping[str, Any] | None = None,
         options: Mapping[str, Any] | None = None,
     ) -> WriteResult:
+        if self.config.options.get("policy_atomic_managed") is True:
+            raise DataUnsupportedOperationError("Managed Qdrant writes require a policy-aware vector port")
         options = dict(options or {})
         if ids is None and not filters:
             return WriteResult()
@@ -211,6 +454,8 @@ class QdrantVectorAdapter:
         self.closed = True
 
     def native_client(self):
+        if self.config.options.get("policy_atomic_managed") is True:
+            raise DataUnsupportedOperationError("Managed Qdrant resources do not expose the native client")
         return self._client_instance()
 
     def collection_name(self) -> str:
@@ -356,12 +601,14 @@ class QdrantVectorFactory:
         *,
         client_factory: Callable[[DataResourceConfig], Any] | None = None,
         models_provider: Callable[[], Any] | None = None,
+        operation_journal: Any = None,
     ) -> None:
         self._client_factory = client_factory
         self._models_provider = models_provider
+        self._operation_journal = operation_journal
 
     def capabilities(self, config: DataResourceConfig) -> set[DataCapability]:
-        native = {DataCapability.NATIVE_CLIENT} if bool(config.options.get("native_client")) else set()
+        native = {DataCapability.NATIVE_CLIENT} if bool(config.options.get("native_client")) and config.options.get("policy_atomic_managed") is not True else set()
         return {DataCapability.VECTOR_SEARCH, DataCapability.VECTOR_WRITE, DataCapability.HEALTHCHECK} | native
 
     def create(self, config: DataResourceConfig) -> QdrantVectorAdapter:
@@ -369,6 +616,7 @@ class QdrantVectorFactory:
             config,
             client_factory=self._client_factory,
             models_provider=self._models_provider,
+            operation_journal=self._operation_journal,
         )
 
 
@@ -387,7 +635,7 @@ def qdrant_filter_from_mapping(filters: Mapping[str, Any], *, models=None):
             must_not.extend(_logical_conditions(value, models=models))
         else:
             must.append(_field_condition(str(key), value, models=models))
-    return models.Filter(must=must, should=should, must_not=must_not)
+    return models.Filter(must=must or None, should=should or None, must_not=must_not or None)
 
 
 def _logical_conditions(value: Any, *, models) -> list[Any]:
@@ -468,6 +716,8 @@ def _normalize_vector(vector: Any) -> list[float]:
 
 def _hit_from_point(point: Any) -> VectorHit:
     payload = dict(getattr(point, "payload", {}) or {})
+    payload.pop(_POLICY_TOKEN_FIELD, None)
+    payload.pop(_POLICY_DELETED_FIELD, None)
     public_id = str(payload.pop(_PUBLIC_ID_FIELD, getattr(point, "id")))
     metadata = {"backend": "qdrant"}
     version = getattr(point, "version", None)
@@ -485,6 +735,10 @@ def _hit_from_point(point: Any) -> VectorHit:
 
 def _payload_with_public_id(item: Mapping[str, Any]) -> dict[str, Any]:
     payload = dict(item.get("payload", {}) or {})
+    if _POLICY_TOKEN_FIELD in payload:
+        raise QdrantConfigError(f"Qdrant payload field '{_POLICY_TOKEN_FIELD}' is reserved")
+    if _POLICY_DELETED_FIELD in payload:
+        raise QdrantConfigError(f"Qdrant payload field '{_POLICY_DELETED_FIELD}' is reserved")
     item_id = str(item["id"])
     existing_id = payload.get(_PUBLIC_ID_FIELD)
     if existing_id is not None and str(existing_id) != item_id:

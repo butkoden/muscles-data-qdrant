@@ -1,4 +1,5 @@
 from __future__ import annotations
+from muscles.data.policy_search import PolicyVectorSearch
 
 from .adapter import (
     QdrantAdapterError,
@@ -23,4 +24,5 @@ __all__ = [
     "QdrantVectorAdapter",
     "QdrantVectorFactory",
     "qdrant_filter_from_mapping",
+    "PolicyVectorSearch",
 ]
